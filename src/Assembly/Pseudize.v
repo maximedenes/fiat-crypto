@@ -143,7 +143,7 @@ Section Conversion.
 
   Lemma pseudo_cons:
     forall {w s n b} (p0: @Pseudo w s n 1) (p1: @Pseudo w s n b)
-        (p2: @Pseudo w s n (S b)) input x xs m0 m1 m2 c0 c1 c2,
+        (p2: @Pseudo w s n (S b)) input m0 m1 m2 c0 c1 c2 x xs,
       pseudoEval p0 (input, m0, c0) = Some ([x], m1, c1)
     -> pseudoEval p1 (input, m1, c1) = Some (xs, m2, c2)
     -> p2 = (@PComb w s n _ _ p0 p1)

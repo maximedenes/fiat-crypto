@@ -15,7 +15,15 @@ Proof. induction n; simpl; omega. Qed.
 
 Lemma pow2_N_bound: forall n j,
   (j < pow2 n)%nat -> (N.of_nat j < Npow2 n)%N.
-Proof. Admitted.
+Proof.
+  intros.
+  rewrite <- Npow2_nat in H.
+  unfold N.lt.
+  rewrite N2Nat.inj_compare.
+  rewrite Nat2N.id.
+  apply Nat.compare_lt_iff in H.
+  assumption.
+Qed.
 
 Class Enumerable A := {
   elements : list A;
@@ -124,32 +132,151 @@ Proof.
       replace x with (split2 1 n (WS true x)) by (simpl; intuition).
       apply in_map.
 
-      revert x H; revert l1 l2; induction nelem; intros l1 l2 x H.
+      pose proof (ncorrect (WS true x)) as ncorrect'; clear ncorrect.
 
-      + pose proof (ncorrect (wzero _)) as Z; simpl in Z; inversion Z.
+      revert ncorrect'; revert x H; revert l1 l2; induction nelem; intros.
 
-      + admit.
+      - inversion ncorrect'.
+
+      - destruct ncorrect'; subst.
+
+        + simpl in H.
+          destruct (partition (whd (sz:=n)) nelem) as [g d].
+          inversion H.
+          intuition.
+
+        + simpl in H; destruct (whd a); simpl in H;
+            destruct (partition (whd (sz:=n)) nelem) as [g d];
+            inversion H; subst; clear H.
+
+          * right; apply (IHnelem g l2); intuition.
+
+          * apply (IHnelem l1 d); intuition.
     }
 
     assert (forall x : word n, In x (map (split2 1 n) l2))
         as ncorrect2. {
-      intro. clear ngood IHn.
+      intro. clear ngood IHn ncorrect1.
 
       replace x with (split2 1 n (WS false x)) by (simpl; intuition).
       apply in_map.
-      revert x H ncorrect1; revert l1 l2; induction nelem; intros l1 l2 x H.
 
-      + pose proof (ncorrect (wzero _)) as Z; simpl in Z; inversion Z.
+      pose proof (ncorrect (WS false x)) as ncorrect'; clear ncorrect.
 
-      + admit.
+      revert ncorrect'; revert x H; revert l1 l2; induction nelem; intros.
+
+      - inversion ncorrect'.
+
+      - destruct ncorrect'; subst.
+
+        + simpl in H.
+          destruct (partition (whd (sz:=n)) nelem) as [g d].
+          inversion H.
+          intuition.
+
+        + simpl in H; destruct (whd a); simpl in H;
+            destruct (partition (whd (sz:=n)) nelem) as [g d];
+            inversion H; subst; clear H.
+
+          * apply (IHnelem g); intuition.
+
+          * right; apply (IHnelem l1); intuition.
     }
 
     assert (NoDup (map (split2 1 n) l1)) as ngood1. {
-      admit.
+      clear ncorrect1 ncorrect2 IHn ncorrect.
+      revert ngood H; revert l1 l2; induction nelem; intros.
+
+      - simpl in H; inversion H; subst; clear H.
+        simpl; constructor.
+
+      - inversion ngood; subst; clear ngood.
+
+        assert (exists g d, partition (@whd n) nelem = (g, d)) as E by (
+            destruct (partition _ _) as [g d]; exists g; exists d; intuition);
+          destruct E as [g E];
+          destruct E as [d E].
+
+        pose proof (elements_in_partition _ _ E) as I.
+
+        destruct (shatter_word_S a) as [b Q].
+        destruct Q as [a' Ha].
+        rewrite Ha in *; simpl in H.
+
+        simpl in H; destruct b; rewrite E in *;
+          inversion H; subst; clear H.
+
+        + constructor. 
+
+          * intro H; clear IHnelem.
+
+            pose proof (@in_map_iff (word (S n)) (word n) (@wtl n) g a') as M.
+            apply M in H; clear M; destruct H; destruct H as [Ha Hb].
+            assert (whd x = true) as Hhd. {
+              clear I H2 H3 Ha a'.
+              admit.
+            }
+
+            destruct (shatter_word_S x) as [b H].
+            destruct H as [x' H].
+            rewrite H in *; simpl in *; clear H.
+            rewrite Hhd in Hb.
+            rewrite Ha in Hb.
+            assert (In (a'~1) g \/ In (a'~1) l2) as Q by intuition.
+            apply I in Q.
+            intuition.
+
+          * apply (IHnelem g l2); intuition.
+
+        + apply (IHnelem _ d); intuition.
     }
 
     assert (NoDup (map (split2 1 n) l2)) as ngood2. {
-      admit.
+      clear ncorrect1 ncorrect2 IHn ncorrect ngood1.
+      revert ngood H; revert l1 l2; induction nelem; intros.
+
+      - simpl in H; inversion H; subst; clear H.
+        simpl; constructor.
+
+      - inversion ngood; subst; clear ngood.
+
+        assert (exists g d, partition (@whd n) nelem = (g, d)) as E by (
+            destruct (partition _ _) as [g d]; exists g; exists d; intuition);
+          destruct E as [g E];
+          destruct E as [d E].
+
+        pose proof (elements_in_partition _ _ E) as I.
+
+        destruct (shatter_word_S a) as [b Q].
+        destruct Q as [a' Ha].
+        rewrite Ha in *; simpl in H.
+
+        simpl in H; destruct b; rewrite E in *;
+          inversion H; subst; clear H.
+
+        + apply (IHnelem g l2); intuition.
+
+        + constructor. 
+
+          * intro H; clear IHnelem.
+
+            pose proof (@in_map_iff (word (S n)) (word n) (@wtl n) d a') as M.
+            apply M in H; clear M; destruct H; destruct H as [Ha Hb].
+            assert (whd x = false) as Hhd. {
+              clear I H2 H3 Ha a'.
+              admit.
+            }
+
+            destruct (shatter_word_S x) as [b H].
+            destruct H as [x' H].
+            rewrite H in *; simpl in *; clear H.
+            rewrite Hhd in Hb.
+            rewrite Ha in Hb.
+            assert (In (a'~0) l1 \/ In (a'~0) d) as Q by intuition.
+            apply I in Q.
+            intuition.
+
+          * apply (IHnelem l1 d); intuition.
     }
 
     pose proof (IHn _ ncorrect1 ngood1) as H1;
