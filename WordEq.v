@@ -1,5 +1,5 @@
 Require Import Bedrock.Word Bedrock.Nomega.
-Require Import List Omega NArith Nnat.
+Require Import List Omega NArith Nnat BoolEq.
 
 Lemma word_replace: forall n m, n = m -> word n = word m.
 Proof. intros; subst; intuition. Qed.
@@ -214,7 +214,30 @@ Proof.
             apply M in H; clear M; destruct H; destruct H as [Ha Hb].
             assert (whd x = true) as Hhd. {
               clear I H2 H3 Ha a'.
-              admit.
+              destruct (shatter_word_S x) as [b H];
+                destruct H as [x' H]; rewrite H in *; clear H x; simpl.
+
+              revert Hb E. revert x' b g l2.
+              induction nelem; intros; simpl in E.
+
+              - inversion E; subst.
+                inversion Hb.
+
+              - simpl in E;
+                  destruct (bool_dec (whd a) true) as [B|B];
+                  destruct (partition (whd (sz:=n)) nelem) as [g' d'].
+
+                + rewrite B in E; inversion E; subst; clear E;
+                    destruct Hb.
+
+                  * rewrite H in *; simpl in B; intuition.
+
+                  * apply (IHnelem x' b g' l2); intuition.
+
+                + assert (whd a = false) as B' by (
+                      induction (whd a); intuition); clear B.
+                  rewrite B' in E. inversion E. subst. clear E.
+                  apply (IHnelem x' b g d'); intuition.
             }
 
             destruct (shatter_word_S x) as [b H].
@@ -264,7 +287,30 @@ Proof.
             apply M in H; clear M; destruct H; destruct H as [Ha Hb].
             assert (whd x = false) as Hhd. {
               clear I H2 H3 Ha a'.
-              admit.
+              destruct (shatter_word_S x) as [b H];
+                destruct H as [x' H]; rewrite H in *; clear H x; simpl.
+
+              revert Hb E. revert x' b d l1.
+              induction nelem; intros; simpl in E.
+
+              - inversion E; subst.
+                inversion Hb.
+
+              - simpl in E;
+                  destruct (bool_dec (whd a) false) as [B|B];
+                  destruct (partition (whd (sz:=n)) nelem) as [g' d'].
+
+                + rewrite B in E; inversion E; subst; clear E;
+                    destruct Hb.
+
+                  * rewrite H in *; simpl in B; intuition.
+
+                  * apply (IHnelem x' b d' l1); intuition.
+
+                + assert (whd a = true) as B' by (
+                      induction (whd a); intuition); clear B.
+                  rewrite B' in E. inversion E. subst. clear E.
+                  apply (IHnelem x' b d g'); intuition.
             }
 
             destruct (shatter_word_S x) as [b H].
@@ -288,7 +334,7 @@ Proof.
     rewrite (partition_length _ _ H); simpl in *.
     rewrite H1, H2.
     omega.
-Admitted.
+Qed.
 
 Lemma word_equiv_correct: forall n m, word n = word m -> n = m.
 Proof.
