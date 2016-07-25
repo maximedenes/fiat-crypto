@@ -762,14 +762,13 @@ Ltac wordize_masked :=
   standardize_maskeq;
   wordize_intro;
   unfold_bounds;
-  simpl in *;
+  simpl';
   repeat wordize_iter;
-  simpl in *;
   match goal with
   | [|- (_ < _)%N] => bound_compute
   | [|- (_ <= _)%N] => bound_compute
-  | [|- _ = _] => simpl';
+  | [|- _ = _] => unfold curriedToListF; simpl';
     repeat match goal with
     | [ |- context[nth ?k ?x ?d] ] => generalize (nth k x d); intro
-    end; reflexivity
+    end; try reflexivity
   end.

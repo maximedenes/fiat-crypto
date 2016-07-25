@@ -68,30 +68,20 @@ Module PipelineExamples.
     Definition f1305 : Curried Z Z 10 5.
       intros f0 f1 f2 f3 f4 g0 g1 g2 g3 g4.
       apply (tupleToList 5).
-      refine (add (f0, f1, f2, f3, f4) (g0, g1, g2, g3, g4)).
+      refine (sub (f0, f1, f2, f3, f4) (g0, g1, g2, g3, g4)).
     Defined.
 
     Definition g1305 : nateq f1305.
-      unfold f1305; solve_nateq.
-    Defined.
+    Proof.
+      unfold f1305, sub, tupleToList, tupleToList';
+        standardize_nateq; eexists; intros;
+        unfold curriedToListF, curriedToListF', map;
+        repeat natize_iter;
+        try reflexivity.
+    Admitted.
 
     Lemma wordF1305: maskeq 64 (proj1_sig g1305) [25;25;25;25;25;25;25;25;25;25].
-    Proof.
-      unfold g1305; simpl'.
-      standardize_maskeq.
-      wordize_intro.
-      unfold_bounds.
-      simpl in *.
-      repeat wordize_iter;
-        match goal with
-        | [|- (_ < _)%N] => bound_compute
-        | [|- (_ <= _)%N] => bound_compute
-        | [|- _ = _] => unfold curriedToListF; simpl';
-          repeat match goal with
-          | [ |- context[nth ?k ?x ?d] ] => generalize (nth k x d); intro
-          end; try reflexivity
-        end.
-    Defined.
+    Proof. unfold g1305; simpl'; wordize_masked. Defined.
 
     Definition listF1305 := curriedToListF (wzero _) (proj1_sig wordF1305).
 

@@ -285,23 +285,14 @@ Transparent nateq_kill_arg nateq_let_const nateq_debool_ltb
 
 Ltac natize_iter :=
   match goal with
-  | [ |- context [(Z.of_N ?x + Z.of_N ?y)%Z]] =>
-    rewrite <- N2Z.inj_add
-
-  | [ |- context [(Z.of_N ?x - Z.of_N ?y)%Z]] =>
-    rewrite <- N2Z.inj_sub
-
-  | [ |- context [(Z.of_N ?x * Z.of_N ?y)%Z]] =>
-    rewrite <- N2Z.inj_mul
-
-  | [ |- context [Z.land (Z.of_N ?x) ?y]] =>
-    rewrite inj_and
-
-  | [ |- context [Z.shiftr (Z.of_N ?x) ?y]] =>
-    rewrite inj_shiftr
-
-  | [ |- context [Z.to_N (Z.of_N ?x)]] =>
-    rewrite N2Z.id
+  | [ |- context [(Z.of_N ?x + Z.of_N ?y)%Z]] => rewrite <- N2Z.inj_add
+  | [ |- context [(Z.of_N ?x - Z.of_N ?y)%Z]] => rewrite <- N2Z.inj_sub
+  | [ |- context [(Z.of_N ?x * Z.of_N ?y)%Z]] => rewrite <- N2Z.inj_mul
+  | [ |- context [Z.land (Z.of_N ?x) ?y]] => rewrite inj_and
+  | [ |- context [Z.shiftr (Z.of_N ?x) ?y]] => rewrite inj_shiftr
+  | [ |- context [Z.to_N (Z.of_N ?x)]] => rewrite N2Z.id
+  | [ |- context [Zpos ?x]] => rewrite <- N2Z.inj_pos
+  | [ |- context [Z0]] => rewrite <- N2Z.inj_0
   end.
 
 Opaque Z.shiftr Z.shiftl Z.land Z.eqb.

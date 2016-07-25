@@ -2,6 +2,7 @@ Require Export Bedrock.Word Bedrock.Nomega.
 Require Import NPeano NArith PArith Ndigits Compare_dec Arith.
 Require Import ProofIrrelevance Ring List Omega.
 Require Import Program.Equality.
+Require Import Crypto.Util.Tuple.
 
 Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x :=
   let y := x in f y.
@@ -11,30 +12,25 @@ Notation "'plet' x := y 'in' z" := (Let_In y (fun x => z)) (at level 60).
 Section Listize.
   Import ListNotations.
 
-  Fixpoint Tuple (A: Type) (n: nat): Type :=
-    match n with
-    | O => unit
-    | 1 => A
-    | S m => ((Tuple A m) * A)%type
+  Transparent tuple.
+
+  Fixpoint tupleToList' {A k}: tuple' A k -> list A :=
+    match k as k' return tuple' A k' -> list A with
+    | O => fun x => [x]
+    | (S k'') => fun x =>
+      match x with
+      | (t, v) => v :: (@tupleToList' _ _ t)
+      end
     end.
 
-  Lemma tupleToList: forall {A} (k: nat), Tuple A k -> list A.
-    intros A k t; induction k as [|k]; try induction k as [|k].
+  Definition tupleToList {A} (k: nat): tuple A k -> list A :=
+    match k as k' return tuple A k' -> list A with
+    | O => fun _ => []
+    | (S k'') => @tupleToList' A k''
+    end.
 
-    - refine [].
-    - refine [t].
-    - refine ((IHk (fst t)) ++ [snd t]).
-  Defined.
-
-  Lemma listToTuple: forall {A} (lst: list A), Tuple A (length lst).
-    intros A lst.
-    induction lst as [|x0 xs];
-      try refine tt;
-      try induction xs as [|x1 xs].
-
-    - refine x0. 
-    - refine (IHxs, x0). 
-  Defined.
+  Lemma app_cons: forall {T} (x: T) (lst: list T), [x] ++ lst = cons x lst.
+  Proof. intros; simpl; reflexivity. Qed.
 
   Fixpoint Curried (A B: Type) (ins: nat) (outs: nat): Type :=
     match ins with
