@@ -194,6 +194,51 @@ Section Misc.
         rewrite N.testbit_succ_r.
         assumption.
   Qed.
+
+  
+  Lemma plus_le: forall {n} (x y: word n),
+    (& (x ^+ y) <= &x + &y)%N.
+  Proof.
+    intros.
+    unfold wplus, wordBin.
+    rewrite wordToN_nat.
+    rewrite NToWord_nat.
+    pose proof (wordToNat_natToWord n (N.to_nat (& x + & y))) as H.
+    destruct H as [k H].
+    destruct H as [Heq Hk].
+    rewrite Heq.
+    rewrite Nat2N.inj_sub.
+    rewrite N2Nat.id.
+    generalize (&x + &y)%N; intro a.
+    generalize (N.of_nat (k * pow2 n))%N; intro b.
+    clear Heq Hk; clear x y k; clear n.
+    replace a with (a - 0)%N by nomega.
+    replace' (a - 0)%N with a at 1 by nomega.
+    apply N.sub_le_mono_l.
+    apply N_ge_0.
+  Qed.
+
+  Lemma mult_le: forall {n} (x y: word n),
+    (& (x ^* y) <= &x * &y)%N.
+  Proof.
+    intros.
+    unfold wmult, wordBin.
+    rewrite wordToN_nat.
+    rewrite NToWord_nat.
+    pose proof (wordToNat_natToWord n (N.to_nat (& x * & y))) as H.
+    destruct H as [k H].
+    destruct H as [Heq Hk].
+    rewrite Heq.
+    rewrite Nat2N.inj_sub.
+    rewrite N2Nat.id.
+    generalize (&x * &y)%N; intro a.
+    generalize (N.of_nat (k * pow2 n))%N; intro b.
+    clear Heq Hk; clear x y k; clear n.
+    replace a with (a - 0)%N by nomega.
+    replace' (a - 0)%N with a at 1 by nomega.
+    apply N.sub_le_mono_l.
+    apply N_ge_0.
+  Qed.
 End Misc.
 
 Section Exp.
@@ -598,6 +643,21 @@ Section SpecialFunctions.
         reflexivity.
   Qed.
 
+  Lemma wordToN_zero: forall w, wordToN (wzero w) = 0%N.
+  Proof.
+    intros.
+    unfold wzero; rewrite wordToN_nat.
+    rewrite wordToNat_natToWord_idempotent; simpl; intuition.
+    apply Npow2_gt0.
+  Qed.
+
+  Lemma NToWord_zero: forall w, NToWord w 0%N = wzero w.
+  Proof.
+    intros.
+    unfold wzero; rewrite NToWord_nat.
+    f_equal.
+  Qed.
+
   Ltac propagate_wordToN :=
     unfold extend, low, high, break;
     repeat match goal with
@@ -678,3 +738,166 @@ Section SpecialFunctions.
   Qed.
 
 End SpecialFunctions.
+
+Section TopLevel.
+  Local Open Scope nword_scope.
+
+  Coercion ind : bool >-> N.
+
+  Lemma wordize_plus: forall {n} (x y: word n),
+      (&x + &y < Npow2 n)%N
+    -> (&x + &y)%N = & (x ^+ y).
+  Proof.
+    intros n x y H.
+    pose proof (word_size_bound x) as Hbx.
+    pose proof (word_size_bound y) as Hby.
+
+    unfold wplus, wordBin.
+    rewrite wordToN_NToWord; intuition.
+  Qed.
+
+  Lemma wordize_awc: forall {n} (x y: word n) (c: bool),
+      (&x + &y + c < Npow2 n)%N
+    -> (&x + &y + c)%N = &(addWithCarry x y c).
+  Proof.
+    intros n x y c H.
+    unfold wplus, wordBin, addWithCarry.
+    destruct c; simpl in *.
+
+    - replace 1%N with (wordToN (natToWord n 1)) in * by (
+        rewrite wordToN_nat;
+        rewrite wordToNat_natToWord_idempotent;
+        nomega).
+
+      rewrite <- N.add_assoc.
+      rewrite wordize_plus; try nomega.
+      rewrite wordize_plus; try nomega.
+
+      + rewrite wplus_assoc.
+        reflexivity.
+
+      + apply (N.le_lt_trans _ (& x + & y + & natToWord n 1)%N _);
+          try assumption.
+        rewrite <- N.add_assoc.
+        apply N.add_le_mono.
+
+        * apply N.eq_le_incl; reflexivity.
+
+        * apply plus_le.
+
+    - rewrite wplus_comm.
+      rewrite wplus_unit.
+      rewrite N.add_0_r in *.
+      apply wordize_plus; assumption.
+  Qed.
+
+  Lemma wordize_mult: forall {n} (x y: word n),
+      (&x * &y < Npow2 n)%N
+    -> (&x * &y)%N = &(x ^* y).
+  Proof.
+    intros n x y H.
+    pose proof (word_size_bound x) as Hbx.
+    pose proof (word_size_bound y) as Hby.
+
+    unfold wmult, wordBin.
+    rewrite wordToN_NToWord; intuition.
+  Qed.
+
+  Lemma wordize_shiftr: forall {n} (x: word n) (k: nat),
+    (N.shiftr_nat (&x) k) = & (shiftr x k).
+  Proof.
+    intros n x k.
+    unfold shiftr, extend, high.
+    destruct (le_dec k n).
+
+    - repeat first [
+        rewrite wordToN_convS
+      | rewrite wordToN_zext
+      | rewrite wordToN_split2 ].
+      rewrite <- Nshiftr_equiv_nat.
+      reflexivity.
+
+    - rewrite (wordToN_nat (wzero n)); unfold wzero.
+      destruct (Nat.eq_dec n O); subst.
+
+      + rewrite (shatter_word_0 x); simpl; intuition.
+        rewrite <- Nshiftr_equiv_nat.
+        rewrite N.shiftr_0_l.
+        reflexivity.
+
+      + rewrite wordToNat_natToWord_idempotent;
+          try nomega.
+
+        * pose proof (word_size_bound x).
+          rewrite <- Nshiftr_equiv_nat.
+          rewrite N.shiftr_eq_0_iff.
+          destruct (N.eq_dec (&x) 0%N) as [E|E];
+            try rewrite E in *;
+            try abstract (left; reflexivity).
+
+          right; split; try nomega.
+          apply (N.le_lt_trans _ (N.log2 (Npow2 n)) _). {
+            apply N.log2_le_mono.
+            apply N.lt_le_incl.
+            assumption.
+          }
+
+          rewrite Npow2_N.
+          rewrite N.log2_pow2; try nomega.
+          apply N_ge_0.
+
+        * simpl; apply Npow2_gt0.
+  Qed.
+
+  Lemma conv_mask: forall {n} (x: word n) (k: nat),
+    (k <= n)%nat ->
+    mask k x = x ^& (NToWord _ (N.ones (N.of_nat k))).
+  Proof.
+    intros n x k H.
+    apply NToWord_equal.
+
+    rewrite <- (Nat2N.id k).
+    rewrite mask_spec.
+    apply N.bits_inj_iff; unfold N.eqf; intro m.
+    rewrite N.land_spec.
+    repeat rewrite wordToN_testbit.
+    rewrite <- (N2Nat.id m).
+    rewrite <- wordToN_wones.
+    repeat rewrite wordToN_testbit.
+    repeat rewrite N2Nat.id.
+    rewrite <- wordToN_wones.
+
+    assert (forall n (a b: word n) k,
+        wbit (a ^& b) k = andb (wbit a k) (wbit b k)) as Hwand. {
+      intros n0 a b.
+      induction n0 as [|n1];
+        shatter a; shatter b;
+        simpl; try reflexivity.
+
+      intro k0; induction k0 as [|k0];
+        simpl; try reflexivity.
+
+      fold wand.
+      rewrite IHn1.
+      reflexivity.
+    }
+
+    rewrite Hwand; clear Hwand.
+    induction (wbit x (N.to_nat m));
+      repeat rewrite andb_false_l;
+      repeat rewrite andb_true_l;
+      try reflexivity.
+
+    repeat rewrite <- wordToN_testbit.
+    rewrite wordToN_NToWord; try reflexivity.
+    apply (N.lt_le_trans _ (Npow2 k) _).
+
+    + apply word_size_bound.
+
+    + apply Npow2_ordered.
+      omega.
+  Qed.
+
+  Close Scope nword_scope.
+End TopLevel.
+

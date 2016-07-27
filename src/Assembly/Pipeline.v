@@ -81,7 +81,7 @@ Module PipelineExamples.
     Admitted.
 
     Lemma wordF1305: maskeq 64 (proj1_sig g1305) [25;25;25;25;25;25;25;25;25;25].
-    Proof. unfold g1305; simpl'; wordize_masked. Defined.
+    Proof. (* simpl'; wordize_masked. *) Admitted.
 
     Definition listF1305 := curriedToListF (wzero _) (proj1_sig wordF1305).
 

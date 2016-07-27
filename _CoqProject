@@ -8,6 +8,7 @@ src/BaseSystemProofs.v
 src/Testbit.v
 src/Assembly/AlmostConversion.v
 src/Assembly/AlmostQhasm.v
+src/Assembly/BoundedType.v
 src/Assembly/Bounds.v
 src/Assembly/Conversion.v
 src/Assembly/Language.v
@@ -21,6 +22,7 @@ src/Assembly/Qhasm.v
 src/Assembly/QhasmCommon.v
 src/Assembly/QhasmEvalCommon.v
 src/Assembly/QhasmUtil.v
+src/Assembly/Reflective.v
 src/Assembly/State.v
 src/Assembly/StringConversion.v
 src/Assembly/Wordize.v
