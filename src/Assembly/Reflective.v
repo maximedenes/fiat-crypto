@@ -1,97 +1,140 @@
-Require Import Bedrock.Word Bedrock.Nomega.
-Require Import NPeano NArith PArith Ndigits ZArith Znat ZArith_dec Ndec.
-Require Import List Listize Basics Bool Nsatz.
-Require Import Crypto.ModularArithmetic.ModularBaseSystemOpt.
+Require Import List Listize Basics Bool Nsatz Basics.
 Require Import QhasmUtil WordizeUtil.
-Require Import BoundedType.
-Require Import FunctionalExtensionality.
+Require Import Crypto.Util.Tuple.
 
 Import ListNotations.
 
-Section AST.
+Section Evaluability.
+  Class Evaluable T := evaluator {
+    ezero: T;
 
-  Inductive RExpr (T: Type) :=
-    | RLit: nat -> RExpr T
-    | RConst: T -> RExpr T
-    | RAdd: RExpr T -> RExpr T -> RExpr T
-    | RSub: RExpr T -> RExpr T -> RExpr T
-    | RMul: RExpr T -> RExpr T -> RExpr T
-    | RShiftr: RExpr T -> nat -> RExpr T
-    | RMask: RExpr T -> nat -> RExpr T.
+    (* Conversions *)
+    toT: nat -> T;
+    fromT: T -> nat;
+    eval_convert_spec: forall x: T, toT (fromT x) = x;
 
-  Inductive RAST (T: Type): Type :=
-    | RList: list (RExpr T) -> RAST T
-    | RLet: RExpr T -> (RExpr T -> RAST T) -> RAST T.
+    (* Operations *)
+    eadd: T -> T -> T;
+    esub: T -> T -> T;
+    emul: T -> T -> T;
+    eshiftr: T -> nat -> T;
+    emask: T -> nat -> T;
 
-End AST.
+    (* Comparisons *)
+    eltb: T -> T -> bool;
+    eeqb: T -> T -> bool
+  }.
+End Evaluability.
 
-Section Evaluation.
-  Fixpoint evalZ (x: RExpr Z) (input: list Z): Z.
-    refine match x with
-    | RLit k => nth k input 0%Z
-    | RConst x => x
-    | RAdd a b => Z.add (evalZ a input) (evalZ b input)
-    | RSub a b => Z.sub (evalZ a input) (evalZ b input)
-    | RMul a b => Z.mul (evalZ a input) (evalZ b input)
-    | RShiftr a k => Z.shiftr (evalZ a input) (Z.of_nat k)
-    | RMask a k => Z.land (evalZ a input) (Z.ones (Z.of_nat k))
-    end; intuition.
-  Defined.
+Section Conditionals.
+  Inductive RCond A :=
+    | RZero: A -> RCond A
+    | RLt: A -> A -> RCond A
+    | REq: A -> A -> RCond A.
+End Conditionals.
 
-  Fixpoint evalBZ (x: RExpr BoundedZ) (input: list BoundedZ): BoundedZ.
-    refine match x with
-    | RLit k => nth k input (boundedZ 0%Z 0%Z 0%Z _ _)
-    | RConst x => x
-    | RAdd a b => bZAdd (evalBZ a input) (evalBZ b input)
-    | RSub a b => bZSub (evalBZ a input) (evalBZ b input)
-    | RMul a b => bZMul (evalBZ a input) (evalBZ b input)
-    | RShiftr a k => bZShiftr (evalBZ a input) k
-    | RMask a k => bZMask (evalBZ a input) k
-    end; intuition.
-  Defined.
+(* Type of our Z Expressions *)
+Section Expr.
+  Context {T: Type}.
+  Context {E: Evaluable T}.
 
-  Fixpoint evalN (x: RExpr BoundedN) (input: list BoundedN): BoundedN.
-    refine match x with
-    | RLit k => nth k input (boundedN 0%N 0%N 1%N _ _)
-    | RConst x => x
-    | RAdd a b => bNAdd (evalN a input) (evalN b input)
-    | RSub a b => bNSub (evalN a input) (evalN b input)
-    | RMul a b => bNMul (evalN a input) (evalN b input)
-    | RShiftr a k => bNShiftr (evalN a input) k
-    | RMask a k => bNMask (evalN a input) k
-    end; try nomega; reflexivity.
-  Defined.
+  Inductive RExpr :=
+    | RConst: T -> RExpr
+    | RAdd: RExpr -> RExpr -> RExpr
+    | RSub: RExpr -> RExpr -> RExpr
+    | RMul: RExpr -> RExpr -> RExpr
+    | RShiftr: RExpr -> nat -> RExpr
+    | RMask: RExpr -> nat -> RExpr
+    | REIte: RCond RExpr -> RExpr -> RExpr -> RExpr.
 
-  Fixpoint evalWord {n}
-      (x: RExpr (@BoundedWord n))
-      (input: list (@BoundedWord n)): @BoundedWord n.
-    refine match x with
-    | RLit k => nth k input (boundedWord (wzero _) 0%N 1%N false _ _)
-    | RConst x => x
-    | RAdd a b => bWAdd (evalWord n a input) (evalWord n b input)
-    | RSub a b => bWSub (evalWord n a input) (evalWord n b input)
-    | RMul a b => bWMul (evalWord n a input) (evalWord n b input)
-    | RShiftr a k => bWShiftr (evalWord n a input) k
-    | RMask a k => bWMask (evalWord n a input) k
-    end; rewrite wordToN_zero; try nomega; reflexivity.
-  Defined.
-End Evaluation.
+  Fixpoint evalExpr (x: RExpr): T :=
+    match x with
+    | RConst v => v
+    | RAdd a b => eadd (evalExpr a) (evalExpr b)
+    | RSub a b => esub (evalExpr a) (evalExpr b)
+    | RMul a b => emul (evalExpr a) (evalExpr b)
+    | RShiftr a k => eshiftr (evalExpr a) k
+    | RMask a k => emask (evalExpr a) k
+    | REIte c a b =>
+      if match c with
+      | RZero x => eeqb (evalExpr x) ezero
+      | RLt x y => eltb (evalExpr x) (evalExpr y)
+      | REq x y => eeqb (evalExpr x) (evalExpr y)
+      end then (evalExpr a) else (evalExpr b)
+    end.
+End Expr.
 
-Section Equivalence.
-  Definition expreq {ins} (f: Curried Z Z ins 1) :=
-    {g: RExpr Z | forall x, curriedToListF 0%Z f x = [evalZ g x] }.
+(* Simple Mostly-PHOAS *)
+Section Term.
+  Context {T: Type}.
+  Context {E: @Evaluable T}.
 
-  Inductive ZEquiv: RAST Z -> ListF Z Z -> Prop :=
-    | ZEquivList: forall lst f,
-        (forall x, map (fun e => evalZ e x) lst = f x)
-      -> ZEquiv (RList Z lst) f
-    | ZEquivLet: forall x g f,
-        ZEquiv (g x) f
-      -> ZEquiv (RLet Z x g) f.
+  Inductive RType :=
+    | RBool: RType
+    | RT: RType
+    | RList: RType -> RType
+    | RArrow: RType -> RType -> RType.
 
-  Hint Constructors ZEquiv.
+  Fixpoint Var (t: RType): Type :=
+    match t with
+    | RBool => bool
+    | RT => @RExpr T
+    | RList A => list (Var A)
+    | RArrow A B => (Var A) -> (Var B)
+    end.
 
-  Definition asteq {ins outs} (f: Curried Z Z ins outs) :=
-    {g: RAST Z | ZEquiv g (curriedToListF 0%Z f) }.
+  Inductive RTerm: RType -> Type :=
+    (* Elements *)
+    | RVar : forall A, Var A -> RTerm A
 
-End Equivalence.
+    (* Lists *)
+    | RNth: forall A, RTerm (RList A) -> nat -> Var A -> RTerm A
+
+    (* Functions *)
+    | RApp : forall A B, RTerm (RArrow A B) -> RTerm A -> RTerm B
+    | RLam : forall A B, (Var A -> RTerm B) -> RTerm (RArrow A B)
+
+    (* Conditionals. TODO: can we make this parametric? *) 
+    | RTIteList :
+      RCond (RTerm RT) -> RTerm (RList RT) -> RTerm (RList RT) -> RTerm (RList RT)
+
+    | RTIteT : RCond (RTerm RT) -> RTerm RT -> RTerm RT -> RTerm RT.
+
+  Fixpoint denote {A} (e : RTerm A) {struct e} : Var A :=
+    match e in (RTerm A) return (Var A) with
+    | RVar _ v => v
+    | RNth _ lst k d => nth k (denote lst) d
+    | RApp _ _ f x => (denote f) (denote x)
+    | RLam _ _ f => fun x => denote (f x)
+
+    | RTIteT c a b =>
+      REIte
+      match c with
+      | RZero x => RZero _ (denote x)
+      | RLt x y => RLt _ (denote x) (denote y)
+      | REq x y => REq _ (denote x) (denote y)
+      end (denote a) (denote b)
+
+    | RTIteList c a b =>
+      map (fun p => REIte
+      match c with
+      | RZero x => RZero _ (denote x)
+      | RLt x y => RLt _ (denote x) (denote y)
+      | REq x y => REq _ (denote x) (denote y)
+      end (fst p) (snd p))
+       (List.combine (denote a) (denote b))
+    end.
+End Term.
+
+Section Sig.
+  Context {T: Type}.
+  Context {E: @Evaluable T}.
+
+  Definition astOf (f: ListF T T): Type :=
+    {g: RTerm (RArrow (RList RT) (RList RT)) | forall x,
+        map evalExpr ((denote g) (map RConst x)) = f x}.
+End Sig.
+
+Section ASTLemmas.
+
+End ASTLemmas.

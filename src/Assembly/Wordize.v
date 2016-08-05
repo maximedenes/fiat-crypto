@@ -37,21 +37,6 @@ Section WordEq.
       Curried (word w) (word w) (S m) n :=
     fun x => proj1_sig (g x).
 
-  Lemma wordToN_zero: forall w, wordToN (wzero w) = 0%N.
-  Proof.
-    intros.
-    unfold wzero; rewrite wordToN_nat.
-    rewrite wordToNat_natToWord_idempotent; simpl; intuition.
-    apply Npow2_gt0.
-  Qed.
-
-  Lemma NToWord_zero: forall w, NToWord w 0%N = wzero w.
-  Proof.
-    intros.
-    unfold wzero; rewrite NToWord_nat.
-    f_equal.
-  Qed.
-
   Lemma wordeq_kill_arg': forall {m n w: nat}
         (f: Curried N N (S m) n)
         (g: forall x, wordeq w (f (wordToN x)))

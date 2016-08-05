@@ -612,8 +612,8 @@ Section BoundedWord.
       match b with
       | boundedWord x1 low1 high1 o1 plow1 phigh1 =>
         if (overflows n (high0 + high1))
-        then boundedWord (x0 ^+ x1) 0%N (high0 + high1) (orb o0 o1) _ _
-        else boundedWord (x0 ^+ x1) (low0 + low1) (high0 + high1) true _ _
+        then boundedWord (x0 ^+ x1) 0%N (high0 + high1) true _ _
+        else boundedWord (x0 ^+ x1) (low0 + low1) (high0 + high1) (orb o0 o1) _ _
       end
     end; try abstract (
       apply (N.le_lt_trans _ (wordToN x0 + wordToN x1)%N _);
@@ -645,7 +645,7 @@ Section BoundedWord.
 
         if (Nge_dec low0 high1)
         then boundedWord (x0 ^- x1) (low0 - high1)%N upper_bound (orb o0 o1) _ _
-        else boundedWord (x0 ^- x1) 0%N upper_bound (orb o0 o1) _ _
+        else boundedWord (x0 ^- x1) 0%N upper_bound true _ _
       end
     end; abstract (unfold upper_bound; try apply N_ge_0;
       destruct (Nge_dec high0 (Npow2 n)), (Nge_dec high1 (Npow2 n));
