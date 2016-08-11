@@ -110,73 +110,13 @@ Module Pseudo <: Language.
   Definition evaluatesTo (p: Params) (prog: Program p) (st st': State p) :=
       pseudoEval prog st = Some st'.
 
-  Delimit Scope pseudo_notations with p.
-  Local Open Scope pseudo_notations.
-
   Definition indexize {n: nat} (x: nat): Index n.
     intros; destruct (le_dec n 0).
 
-    - exists 0; abstract intuition.
+    - exists 0; abstract omega.
     - exists (x mod n)%nat; abstract (
         pose proof (Nat.mod_bound_pos x n); omega).
   Defined.
 
-  Notation "% A" := (PVar _ (Some false) (indexize A))
-    (at level 20, right associativity) : pseudo_notations.
-
-  Notation "$ A" := (PVar _ (Some true) (indexize A))
-    (at level 20, right associativity) : pseudo_notations.
-
-  Notation "A :[ B ]:" :=  (PMem _ _ (indexize A) (indexize B))
-    (at level 20, right associativity) : pseudo_notations.
-
-  Notation "# A" := (PConst _ (natToWord _ A))
-    (at level 20, right associativity) : pseudo_notations.
-
-  Notation "A :+: B" := (PBin _ IAdd (PCons _ _ A B))
-    (at level 60, right associativity) : pseudo_notations.
-
-  Notation "A :+c: B" := (PCarry _ AddWithCarry (PCons _ _ A B))
-    (at level 60, right associativity) : pseudo_notations.
-
-  Notation "A :-: B" := (PBin _ ISub (PCons _ _ A B))
-    (at level 60, right associativity) : pseudo_notations.
-
-  Notation "A :&: B" := (PBin _ IAnd (PCons _ _ A B))
-    (at level 45, right associativity) : pseudo_notations.
-
-  Notation "A :^: B" := (PBin _ IXor (PCons _ _ A B))
-    (at level 45, right associativity) : pseudo_notations.
-
-  Notation "A :>>: B" := (PShift _ Shr (indexize B) A)
-    (at level 60, right associativity) : pseudo_notations.
-
-  Notation "A :<<: B" := (PShift _ Shl (indexize B) A)
-    (at level 60, right associativity) : pseudo_notations.
-
-  Notation "A :*: B" := (PDual _ Mult (PCons _ _ A B))
-    (at level 55, right associativity) : pseudo_notations.
-
-  Notation "O :( A , B ): :?: L ::: R" :=
-    (PIf _ _ O (indexize A) (indexize B) L R)
-    (at level 70, right associativity) : pseudo_notations.
-
-  Notation "F :**: e" :=
-    (PFunExp _ F e)
-    (at level 70, right associativity) : pseudo_notations.
-
-  Notation "E :->: F" :=
-    (PLet _ _ _ E F)
-    (at level 70, right associativity) : pseudo_notations.
-
-  Notation "A :|: B" :=
-    (PCons _ _ A B)
-    (at level 65, left associativity) : pseudo_notations.
-
-  Notation "n ::: A :():" :=
-    (PCall _ _ n A)
-    (at level 65, left associativity) : pseudo_notations.
-
-  Close Scope pseudo_notations.
 End Pseudo.
 

@@ -1,4 +1,4 @@
-Require Import List Listize Basics Bool Nsatz Basics.
+Require Import ZArith List Listize Basics Bool Nsatz Basics.
 Require Import QhasmUtil WordizeUtil.
 Require Import Crypto.Util.Tuple.
 
@@ -11,7 +11,6 @@ Section Evaluability.
     (* Conversions *)
     toT: nat -> T;
     fromT: T -> nat;
-    eval_convert_spec: forall x: T, toT (fromT x) = x;
 
     (* Operations *)
     eadd: T -> T -> T;
