@@ -134,6 +134,67 @@ Section Sig.
         map evalExpr ((denote g) (map RConst x)) = f x}.
 End Sig.
 
-Section ASTLemmas.
+Section Conversion.
+  Fixpoint convertExpr {A B} {ea: Evaluable A} {eb: Evaluable B}
+      (t: @RExpr A): @RExpr B :=
+    match t with
+    | RConst v => RConst (@toT B eb (@fromT A ea v))
+    | RAdd a b => RAdd (convertExpr a) (convertExpr b)
+    | RSub a b => RSub (convertExpr a) (convertExpr b)
+    | RMul a b => RMul (convertExpr a) (convertExpr b)
+    | RShiftr a k => RShiftr (convertExpr a) k
+    | RMask a k => RMask (convertExpr a) k
+    | REIte c a b =>
+      match c with
+      | RZero x =>
+        REIte (RZero _ (convertExpr x))
+              (convertExpr a) (convertExpr b)
+      | RLt x y => 
+        REIte (RLt _ (convertExpr x) (convertExpr y))
+              (convertExpr a) (convertExpr b)
+      | REq x y =>
+        REIte (REq _ (convertExpr x) (convertExpr y))
+              (convertExpr a) (convertExpr b)
+      end
+    end.
 
+  (* TODO (rsloan): can we make this a fixpoint? *)
+  Definition convertVar {A B V} {ea: Evaluable A} {eb: Evaluable B}
+      (t: @Var A V): @Var B V.
+    revert ea eb t; revert A B.
+    induction V; intros.
+
+    - refine t.
+    - refine (convertExpr t).
+    - refine (map (IHV A B ea eb) t).
+    - refine (fun x => IHV2 _ _ _ _ (t (IHV1 _ _ _ _ x))).
+  Defined.
+
+  Fixpoint convertAST {A B V} {ea: Evaluable A} {eb: Evaluable B}
+      (t: @RTerm A V): @RTerm B V :=
+    match t with
+    | RVar _ v => RVar _ (convertVar v)
+    | RNth _ lst k d => RNth _ (convertAST lst) k (convertVar d)
+    | RApp _ _ f x => RApp _ _ (convertAST f) (convertAST x)
+    | RLam _ _ f => RLam _ _ (fun x => convertAST (f (convertVar x)))
+
+    | RTIteT c a b =>
+      RTIteT
+      match c with
+      | RZero x => RZero _ (convertAST x)
+      | RLt x y => RLt _ (convertAST x) (convertAST y)
+      | REq x y => REq _ (convertAST x) (convertAST y)
+      end (convertAST a) (convertAST b)
+
+    | RTIteList c a b =>
+      RTIteList 
+      match c with
+      | RZero x => RZero _ (convertAST x)
+      | RLt x y => RLt _ (convertAST x) (convertAST y)
+      | REq x y => REq _ (convertAST x) (convertAST y)
+      end (convertAST a) (convertAST b)
+    end.
+End Conversion.
+
+Section ASTLemmas.
 End ASTLemmas.
