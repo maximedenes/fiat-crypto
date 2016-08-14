@@ -63,18 +63,18 @@ Section Types.
 End Types.
 
 Section Expressions.
-  Context {T : Type} {E : Evaluable T} {var : Type}.
+  Context {T : Type} {E : Evaluable T} {V : Type}.
 
   Inductive arg : type -> Type :=
     | Const : @interp_type T TZ -> arg TZ
-    | Var : var -> arg TZ
+    | Var : V -> arg TZ
     | Pair : forall {t1}, arg t1 -> forall {t2}, arg t2 -> arg (Prod t1 t2).
 
   Inductive expr : type -> Type :=
     | LetBinop : forall {t1 t2}, binop t1 t2 TZ -> arg t1 -> arg t2 ->
-      forall {tC}, (var -> expr tC) -> expr tC
+      forall {tC}, (T -> expr tC) -> expr tC
     | LetNatop : forall {t}, natop t TZ -> arg t -> nat ->
-      forall {tC}, (var -> expr tC) -> expr tC
+      forall {tC}, (T -> expr tC) -> expr tC
     | Return : forall {t}, arg t -> expr t.
 
   Arguments arg _ : clear implicits.
@@ -82,41 +82,62 @@ Section Expressions.
 End Expressions.
 
 Section Interp.
-  Context {T : Type} {E : Evaluable T}.
+  Context {T : Type} {E : Evaluable T} {V : Type}.
 
-  Fixpoint interp_arg {t} (e: arg t) : @interp_type T t :=
+  Fixpoint interp_arg {t} (varF: V -> T) (e: arg t) : @interp_type T t :=
     match e with
-    | Const n => n
-    | Var n => n
-    | Pair _ e1 _ e2 => (interp_arg e1, interp_arg e2)
+    | Const v => v
+    | Var n => varF n
+    | Pair _ e1 _ e2 => (interp_arg varF e1, interp_arg varF e2)
     end.
 
-  Fixpoint interp {t} (e:expr t) : @interp_type T t :=
+  Fixpoint interp {t} (varF: V -> T) (e:expr t) : @interp_type T t :=
     match e with
     | LetBinop _ _ op a b _ eC =>
-      let x := interp_binop op (interp_arg a) (interp_arg b) in interp (eC x)
+      let x := interp_binop op (interp_arg varF a) (interp_arg varF b) in interp varF (eC x)
     | LetNatop _ op a k _ eC =>
-      let x := interp_natop op (interp_arg a) k in interp (eC x)
-    | Return _ a => interp_arg a
+      let x := interp_natop op (interp_arg varF a) k in interp varF (eC x)
+    | Return _ a => interp_arg varF a
     end.
 End Interp.
 
+Section Conversion.
+  Fixpoint convertArg {A ea B eb V t}  (e: @arg A V t): @arg B V t :=
+    match e with
+    | Const x => Const (@toT B eb (@fromT A ea x))
+    | Var v => Var v
+    | Pair t0 a t1 b => @Pair B V t0 (convertArg a) t1 (convertArg b)
+    end.
+
+  Fixpoint convertExpr {A ea B eb V t}  (e: @expr A V t): @expr B V t :=
+    match e with
+    | LetBinop _ _ op a b _ eC =>
+      @LetBinop _ _ _ _ op (@convertArg A ea B eb V _ a) (@convertArg A ea B eb V _ b) _
+                (fun x => convertExpr (eC (@toT A ea (@fromT B eb x))))
+
+    | LetNatop _ op a k _ eC =>
+      @LetNatop _ _ _ op (@convertArg A ea B eb V _ a) k _
+                (fun x => convertExpr (eC (@toT A ea (@fromT B eb x))))
+
+    | Return _ a => Return (convertArg a)
+    end.
+End Conversion.
+
 Section RangeExample.
+  Definition n := 8.
+
+  Definition ZExpr :=
+    @LetBinop Z Z _ _ OPZadd (Const 5%Z) (Const 6%Z) _ (fun v => Return (Const v)).
+
+  Definition WordExpr :=
+    @convertExpr Z ZEvaluable (@WordRangeOpt n) WordRangeOptEvaluable _ _ ZExpr.
+
   Definition rangeInterp {t} :=
-    @interp (@WordRangeOpt 8) (@WordRangeOptEvaluable 8) t.
+    @interp (@WordRangeOpt n) (@WordRangeOptEvaluable n) Z t (fun _ => anyWord).
 
-  Definition smallRange :=
-    getOrElse anyWord (@makeRangeOpt 8 0 25).
+  Eval vm_compute in (evalWordRangeOpt (rangeInterp WordExpr)).
 
-  Eval vm_compute in
-    (evalWordRangeOpt
-      (rangeInterp (LetBinop OPZadd (Const smallRange) (Const smallRange)
-        (fun v => Return (Var v))))).
-
-  Example example_expr :
-    (getUpperBoundOpt
-      (rangeInterp (LetBinop OPZadd (Const smallRange) (Const smallRange)
-        (fun v => Return (Var v)))) = Some 50%N).
+  Example example_expr : getUpperBoundOpt (rangeInterp WordExpr) = Some 10%N.
   Proof. reflexivity. Qed.
 End RangeExample.
 
