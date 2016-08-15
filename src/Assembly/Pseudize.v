@@ -542,8 +542,8 @@ Section Conversion.
 
     - rewrite (pseudo_funexp_S); try assumption.
       rewrite (pseudo_funexp_S) in He; try assumption.
-      assert (exists a b c, pseudoEval (p :**: e)%p (input, m0, c0) = Some (a, b, c)) as Z. {
-        induction (pseudoEval (p :**: e)%p (input, m0, c0)) as [z|].
+      assert (exists a b c, pseudoEval (@PFunExp _ _ _ p e) (input, m0, c0) = Some (a, b, c)) as Z. {
+        induction (pseudoEval (@PFunExp _ _ _ p e) (input, m0, c0)) as [z|].
 
         + exists (fst (fst z)); exists (snd (fst z)); exists (snd z).
           induction z as [z0 z2]; induction z0 as [z0 z1]; simpl; reflexivity.
@@ -605,13 +605,13 @@ Ltac pseudo_step :=
   | [ |- pseudoEval ?p _ = Some (cons ?x (cons _ _), _, _) ] =>
     is_evar p; eapply pseudo_cons
 
-  | [ |- pseudoEval ?p _ = Some ([natToWord _ ?x], _, _)%p ] =>
+  | [ |- pseudoEval ?p _ = Some ([natToWord _ ?x], _, _) ] =>
     is_evar p; eapply pseudo_const
 
-  | [ |- pseudoEval ?p _ = Some ([NToWord _ (@wordToN _ ?x)], _, _)%p ] =>
+  | [ |- pseudoEval ?p _ = Some ([NToWord _ (@wordToN _ ?x)], _, _) ] =>
     is_evar p; rewrite NToWord_wordToN
 
-  | [ |- pseudoEval ?p _ = Some ([NToWord _ ?x], _, _)%p ] =>
+  | [ |- pseudoEval ?p _ = Some ([NToWord _ ?x], _, _) ] =>
     is_evar p; eapply pseudo_const
 
   | [ |- pseudoEval ?p _ = Some ((Let_In ?a ?f), _, _) ] =>
@@ -623,7 +623,7 @@ Ltac pseudo_step :=
     end
 
   | [ |- @pseudoEval ?n _ _ _ ?P _ =
-        Some ([nth ?i ?lst _], _, _)%p ] =>
+        Some ([nth ?i ?lst _], _, _) ] =>
     eapply (pseudo_var None i);
       try reflexivity; list_destruct;
       simpl; intuition
