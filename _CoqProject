@@ -100,6 +100,7 @@ src/Reflection/Application.v
 src/Reflection/ApplicationLemmas.v
 src/Reflection/ApplicationRelations.v
 src/Reflection/BoundByCast.v
+src/Reflection/BoundByCastInterp.v
 src/Reflection/BoundByCastWf.v
 src/Reflection/CommonSubexpressionElimination.v
 src/Reflection/Conversion.v
@@ -134,6 +135,7 @@ src/Reflection/MultiSizeTest2.v
 src/Reflection/Reify.v
 src/Reflection/Relations.v
 src/Reflection/SmartBound.v
+src/Reflection/SmartBoundInterp.v
 src/Reflection/SmartBoundWf.v
 src/Reflection/SmartCast.v
 src/Reflection/SmartCastInterp.v
